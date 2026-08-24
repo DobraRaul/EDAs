@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 
 st.set_page_config(
     page_title="EDA SEN 2025 - Analiză SEN",
@@ -190,3 +191,75 @@ else:
     4. **Comportamentul Soldului Transfrontalier:**
        - Se observă cum soldul urmărește diferențialul dintre cerere și generarea locală: în perioadele de vârf de sarcină sau cădere a producției regenerabile, sistemul apelează la importuri (sold pozitiv), revenind spre export sau echilibru la golul de noapte sau în orele de supraproducție eoliană/solară.
     """)
+
+    #TASK 2: ORELE DE VÂRF VS. ORELE DE GOL
+st.markdown("---")
+st.header("2. Analiză Comparativă: Ore de Vârf vs. Ore de Gol")
+st.write(
+    "Analiza compară modul în care cererea de consum este acoperită în momentele de minimă solicitare "
+    "(Gol: 02:00–05:00) față de momentele de maximă solicitare (Vârf de Seară: 18:00–21:00) pe tot parcursul anului 2025."
+)
+
+df_hourly['Interval'] = 'Altele'
+df_hourly.loc[df_hourly.index.hour.isin([2, 3, 4, 5]), 'Interval'] = 'Gol de Noapte (02-05)'
+df_hourly.loc[df_hourly.index.hour.isin([18, 19, 20, 21]), 'Interval'] = 'Vârf de Seară (18-21)'
+
+surse_lista = ['Nuclear', 'Carbune', 'Hidrocarburi', 'Ape', 'Eolian', 'Foto', 'Biomasa']
+variabile_analiza = ['Consum', 'Productie', 'Sold', 'Sarcina_Reziduala'] + surse_lista
+
+df_vg = df_hourly[df_hourly['Interval'] != 'Altele'].groupby('Interval')[variabile_analiza].mean().reset_index()
+
+for col in surse_lista + ['Sold']:
+    df_vg[f'Pondere_{col}'] = (df_vg[col] / df_vg['Consum']) * 100
+
+st.subheader("Bilanț Mediu Anual pe Interval (MW)")
+df_display = df_vg.set_index('Interval')[['Consum', 'Productie', 'Sold', 'Sarcina_Reziduala'] + surse_lista].round(1)
+st.dataframe(df_display, use_container_width=True)
+
+df_melted_mw = df_vg.melt(
+    id_vars=['Interval'],
+    value_vars=surse_lista + ['Sold'],
+    var_name='Componenta',
+    value_name='Putere_MW'
+)
+
+fig_comp = px.bar(
+    df_melted_mw,
+    x='Interval',
+    y='Putere_MW',
+    color='Componenta',
+    barmode='group',
+    title="Comparație Producție pe Surse și Sold: Vârf de Seară vs. Gol de Noapte",
+    labels={'Putere_MW': 'Putere Medie (MW)', 'Interval': 'Regim de Funcționare'},
+    color_discrete_map={
+        'Nuclear': '#8c564b',
+        'Carbune': '#4d4d4d',
+        'Hidrocarburi': '#ff7f0e',
+        'Biomasa': '#8c6d31',
+        'Ape': '#1f77b4',
+        'Eolian': '#2ca02c',
+        'Foto': '#f5b041',
+        'Sold': '#d62728'
+    }
+)
+fig_comp.update_layout(template='plotly_white', height=500)
+st.plotly_chart(fig_comp, use_container_width=True)
+
+col_v1, col_v2, col_v3, col_v4 = st.columns(4)
+consum_gol = df_vg.loc[df_vg['Interval'] == 'Gol de Noapte (02-05)', 'Consum'].values[0]
+consum_varf = df_vg.loc[df_vg['Interval'] == 'Vârf de Seară (18-21)', 'Consum'].values[0]
+sold_gol = df_vg.loc[df_vg['Interval'] == 'Gol de Noapte (02-05)', 'Sold'].values[0]
+sold_varf = df_vg.loc[df_vg['Interval'] == 'Vârf de Seară (18-21)', 'Sold'].values[0]
+
+col_v1.metric("Consum Mediu Gol", f"{consum_gol:.0f} MW")
+col_v2.metric("Consum Mediu Vârf", f"{consum_varf:.0f} MW", delta=f"+{consum_varf - consum_gol:.0f} MW")
+col_v3.metric("Sold Mediu Gol", f"{sold_gol:.0f} MW", delta="Import" if sold_gol > 0 else "Export")
+col_v4.metric("Sold Mediu Vârf", f"{sold_varf:.0f} MW", delta="Import" if sold_varf > 0 else "Export")
+
+st.markdown("### Concluzii & Interpretare EDA: Vârf vs. Gol")
+st.markdown("""
+* **Comportamentul Benzii:** Producția Nucleară rămâne neschimbată între vârf și gol (~1.300 MW). Cărbunele prezintă o rigiditate ridicată, modificându-și puțin producția între cele două regimuri.
+* **Sursele de Acoperire a Vârfului:** Diferența masivă de consum între noapte și seară este preluată preponderent de **Hidroelectrica (`Ape`)**, centralele flexibile pe gaz (**`Hidrocarburi`**) și **Soldul de schimb (creșterea importurilor)**.
+* **Contribuția Regenerabilelor:** La vârful de seară (18:00–21:00), energia solară (`Foto`) este nulă sau neglijabilă din cauza apusului. Eolianul are o producție distribuită uniform/variabil, fără garanție de acoperire la oră fixă.
+* **Dinamica Soldului:** În golul de noapte, raportul dintre producția fixă și consum permite reducerea importurilor sau apariția exporturilor; la vârful de seară, soldul devine frecvent pozitiv (import net substanțial).
+""")
