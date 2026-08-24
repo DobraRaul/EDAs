@@ -263,3 +263,54 @@ st.markdown("""
 * **Contribuția Regenerabilelor:** La vârful de seară (18:00–21:00), energia solară (`Foto`) este nulă sau neglijabilă din cauza apusului. Eolianul are o producție distribuită uniform/variabil, fără garanție de acoperire la oră fixă.
 * **Dinamica Soldului:** În golul de noapte, raportul dintre producția fixă și consum permite reducerea importurilor sau apariția exporturilor; la vârful de seară, soldul devine frecvent pozitiv (import net substanțial).
 """)
+
+# TASK 3: ECHILIBRU ZI CU SRE RIDICAT VS. SRE SCĂZUT
+st.markdown("---")
+st.subheader("3. Comparație Regimuri: Zi cu SRE Ridicat vs. Zi cu SRE Scăzut")
+
+df_hourly_calc = df_hourly.copy()
+df_hourly_calc['SRE_Total'] = df_hourly_calc['Eolian'] + df_hourly_calc['Foto']
+df_hourly_calc['Data_Str'] = df_hourly_calc.index.strftime("%Y-%m-%d")
+
+daily_sre_series = df_hourly_calc.groupby('Data_Str')['SRE_Total'].mean()
+
+zi_max_str = daily_sre_series.idxmax()
+zi_min_str = daily_sre_series.idxmin()
+
+col_h, col_l = st.columns(2)
+col_h.info(f"🟢 **Zi High-SRE:** `{zi_max_str}` (Medie SRE: {daily_sre_series[zi_max_str]:.0f} MW)")
+col_l.warning(f"🟠 **Zi Low-SRE:** `{zi_min_str}` (Medie SRE: {daily_sre_series[zi_min_str]:.0f} MW)")
+
+df_high = df_hourly_calc[df_hourly_calc['Data_Str'] == zi_max_str].copy()
+df_low = df_hourly_calc[df_hourly_calc['Data_Str'] == zi_min_str].copy()
+
+df_high['Ora'] = df_high.index.hour
+df_low['Ora'] = df_low.index.hour
+
+fig3 = go.Figure()
+
+fig3.add_trace(go.Scatter(x=df_high['Ora'], y=df_high['Ape'], mode='lines', name='Hidro (High-SRE)', line=dict(color='#1f77b4', width=2.5)))
+fig3.add_trace(go.Scatter(x=df_high['Ora'], y=df_high['Hidrocarburi'], mode='lines', name='Gaz (High-SRE)', line=dict(color='#ff7f0e', width=2.5)))
+fig3.add_trace(go.Scatter(x=df_high['Ora'], y=df_high['Sold'], mode='lines', name='Sold (High-SRE)', line=dict(color='#2ca02c', width=2.5, dash='dot')))
+
+fig3.add_trace(go.Scatter(x=df_low['Ora'], y=df_low['Ape'], mode='lines', name='Hidro (Low-SRE)', line=dict(color='#1f77b4', width=2.5, dash='dash')))
+fig3.add_trace(go.Scatter(x=df_low['Ora'], y=df_low['Hidrocarburi'], mode='lines', name='Gaz (Low-SRE)', line=dict(color='#ff7f0e', width=2.5, dash='dash')))
+fig3.add_trace(go.Scatter(x=df_low['Ora'], y=df_low['Sold'], mode='lines', name='Sold (Low-SRE)', line=dict(color='#d62728', width=2.5, dash='dashdot')))
+
+fig3.update_layout(
+    title="Comparație Răspuns Hidro, Gaz și Sold (High-SRE vs. Low-SRE)",
+    xaxis=dict(title="Ora", tickmode='linear', dtick=1),
+    yaxis=dict(title="Putere (MW)"),
+    legend=dict(orientation="h", y=-0.3),
+    hovermode='x unified',
+    template='plotly_white',
+    height=480
+)
+st.plotly_chart(fig3, use_container_width=True)
+
+st.markdown("### Concluzii & Interpretare EDA: High-SRE vs. Low-SRE")
+st.markdown("""
+* **Rolul de Amortizor al Hidro (`Ape`):** În ziua cu SRE scăzut, hidrocentralele compensează direct deficitul de energie regenerabilă; în ziua cu SRE ridicat, producția hidro este redusă pentru a economisi apa din lacurile de acumulare.
+* **Flexibilitatea Gazului (`Hidrocarburi`):** Centralele pe gaz funcționează ca rezervă directă, crescând producția când eolianul și solarul sunt la minim.
+* **Soldul Transfrontalier:** Ziua cu producție mare SRE permite exporturi sau import redus, în timp ce ziua cu calm atmosferic și cer acoperit forțează sistemul spre importuri masive.
+""")
