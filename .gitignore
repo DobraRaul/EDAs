@@ -1,0 +1,15 @@
+# Medii virtuale Python
+venv/
+.venv/
+env/
+
+# Cache Python
+__pycache__/
+*.pyc
+
+# Fișiere sistem de operare
+.DS_Store
+Thumbs.db
+
+# Configurații locale VS Code
+.vscode/
