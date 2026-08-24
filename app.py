@@ -132,7 +132,7 @@ else:
             xanchor='left'
         ),
         xaxis=dict(
-            title="Ora Zilei (00:00 - 23:00)",
+            title="Ora",
             tickmode='linear',
             dtick=1,
             gridcolor='#eaeaea'
@@ -313,4 +313,82 @@ st.markdown("""
 * **Rolul de Amortizor al Hidro (`Ape`):** În ziua cu SRE scăzut, hidrocentralele compensează direct deficitul de energie regenerabilă; în ziua cu SRE ridicat, producția hidro este redusă pentru a economisi apa din lacurile de acumulare.
 * **Flexibilitatea Gazului (`Hidrocarburi`):** Centralele pe gaz funcționează ca rezervă directă, crescând producția când eolianul și solarul sunt la minim.
 * **Soldul Transfrontalier:** Ziua cu producție mare SRE permite exporturi sau import redus, în timp ce ziua cu calm atmosferic și cer acoperit forțează sistemul spre importuri masive.
+""")
+
+# TASK 4: MOMENTELE DE STRES OPERAȚIONAL
+st.markdown("---")
+st.subheader("4. Identificarea Momentelor de Stres Operațional (Anul 2025)")
+st.write(
+    "Analiza cuantifică stresul sistemului printr-un **Index de Stres Operațional (0–100)** "
+    "calculat pe baza a 3 componente simultane: rampa orară de consum, deficitul de producție regenerabilă (SRE) și volumul de import."
+)
+
+
+df_stress = df_hourly.copy()
+df_stress['Rampa_Consum'] = df_stress['Consum'].diff()
+df_stress['SRE_Total'] = df_stress['Eolian'] + df_stress['Foto']
+
+def min_max_norm(series):
+    return (series - series.min()) / (series.max() - series.min())
+
+norm_rampa = min_max_norm(df_stress['Rampa_Consum'].fillna(0))
+norm_low_sre = 1 - min_max_norm(df_stress['SRE_Total'])
+norm_import = min_max_norm(df_stress['Sold'])
+
+df_stress['Index_Stres'] = ((norm_rampa * 0.35) + (norm_low_sre * 0.35) + (norm_import * 0.30)) * 100
+
+top_stres = df_stress.sort_values('Index_Stres', ascending=False).head(10)
+
+st.write("#### Top 10 Ore Critice pentru SEN în 2025")
+coloane_afisaj = ['Consum', 'Rampa_Consum', 'SRE_Total', 'Sold', 'Ape', 'Hidrocarburi', 'Nuclear', 'Carbune', 'Index_Stres']
+st.dataframe(
+    top_stres[coloane_afisaj].round(1).rename(columns={
+        'Rampa_Consum': 'Rampă Consum (MW/h)',
+        'SRE_Total': 'SRE Eolian+Foto (MW)',
+        'Sold': 'Sold Import (MW)',
+        'Index_Stres': 'Scor Stres (0-100)'
+    }),
+    use_container_width=True
+)
+
+ora_critica = top_stres.index[0]
+zi_critica_str = ora_critica.strftime("%Y-%m-%d")
+df_zi_critica = df_stress.loc[df_stress.index.strftime("%Y-%m-%d") == zi_critica_str].copy()
+df_zi_critica['Ora'] = df_zi_critica.index.hour
+
+st.write(f"#### Comportamentul Sistemului în Ziua cu Cel Mai Mare Stres: `{zi_critica_str}` (Ora de Vârf de Stres: `{ora_critica.strftime('%H:00')}`)")
+
+fig4 = go.Figure()
+
+fig4.add_trace(go.Scatter(x=df_zi_critica['Ora'], y=df_zi_critica['Nuclear'], mode='lines', name='Nuclear', stackgroup='one', line=dict(color='#8c564b')))
+fig4.add_trace(go.Scatter(x=df_zi_critica['Ora'], y=df_zi_critica['Carbune'], mode='lines', name='Cărbune', stackgroup='one', line=dict(color='#4d4d4d')))
+fig4.add_trace(go.Scatter(x=df_zi_critica['Ora'], y=df_zi_critica['Hidrocarburi'], mode='lines', name='Gaz (Hidrocarburi)', stackgroup='one', line=dict(color='#ff7f0e')))
+fig4.add_trace(go.Scatter(x=df_zi_critica['Ora'], y=df_zi_critica['Biomasa'], mode='lines', name='Biomasă', stackgroup='one', line=dict(color='#8c6d31')))
+fig4.add_trace(go.Scatter(x=df_zi_critica['Ora'], y=df_zi_critica['Ape'], mode='lines', name='Hidro', stackgroup='one', line=dict(color='#1f77b4')))
+fig4.add_trace(go.Scatter(x=df_zi_critica['Ora'], y=df_zi_critica['Eolian'], mode='lines', name='Eolian', stackgroup='one', line=dict(color='#2ca02c')))
+fig4.add_trace(go.Scatter(x=df_zi_critica['Ora'], y=df_zi_critica['Foto'], mode='lines', name='Foto', stackgroup='one', line=dict(color='#f5b041')))
+
+fig4.add_trace(go.Scatter(x=df_zi_critica['Ora'], y=df_zi_critica['Consum'], mode='lines+markers', name='Consum (MW)', line=dict(color='black', width=3)))
+fig4.add_trace(go.Scatter(x=df_zi_critica['Ora'], y=df_zi_critica['Sold'], mode='lines+markers', name='Sold Import (MW)', yaxis='y2', line=dict(color='#d62728', width=2.5, dash='dot')))
+
+fig4.add_vline(x=ora_critica.hour, line_width=2, line_dash="dash", line_color="red")
+fig4.add_annotation(x=ora_critica.hour, y=df_zi_critica['Consum'].max(), text="Punct Maxim Stres", showarrow=True, arrowhead=1)
+
+fig4.update_layout(
+    title=f"Echilibru SEN în Ziua Critică ({zi_critica_str})",
+    xaxis=dict(title="Ora", tickmode='linear', dtick=1),
+    yaxis=dict(title="Putere Producție / Consum (MW)"),
+    yaxis2=dict(title="Sold Import (MW)", overlaying='y', side='right', showgrid=False),
+    legend=dict(orientation="h", y=-0.3),
+    hovermode='x unified',
+    template='plotly_white',
+    height=520
+)
+st.plotly_chart(fig4, use_container_width=True)
+
+st.markdown("### Concluzii & Interpretare EDA: Momentele de Stres")
+st.markdown("""
+* **Suprapunerea Factorilor Critici:** Orele de stres maxim apar tipic la orele serii (17:00–21:00) în sezoanele reci sau perioade de tranziție, unde consumul crește abrupt concomitent cu apusul soarelui (`Foto` devine zero) și calmul eolian (`Eolian` minim).
+* **Activarea Capacităților Flexibile:** În aceste ferestre, producția hidro (`Ape`) și pe gaz (`Hidrocarburi`) este împinsă la capacități foarte mari pentru a acoperi rampa pozitivă abruptă.
+* **Presiunea pe Importuri:** Deoarece producția internă dispecerizabilă ajunge aproape de plafon, sistemul devine dependent de fluxurile de import transfrontalier (sold pozitiv ridicat) pentru menținerea frecvenței și a echilibrului de bilanț.
 """)
