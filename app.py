@@ -182,11 +182,11 @@ else:
        - Cărbunele menține un nivel constant, participând mai puțin la reglajul dinamic rapid intrazilnic.
 
     2. **Urmărirea de Sarcină și Rolul Hidro & Gaz:**
-       - Producția hidrocentrale (`Ape`) și hidrocarburi (`Gaz`) funcționează ca elemente flexibile de echilibrare: acestea își reduc turația la orele prânzului când parcurile fotovoltaice (`Foto`) injectează putere maximă și urcă alert pentru a acoperi vârful de seară (orele 19:00–22:00)[cite: 1].
+       - Producția hidrocentrale (`Ape`) și hidrocarburi (`Gaz`) funcționează ca elemente flexibile de echilibrare: acestea își reduc turația la orele prânzului când parcurile fotovoltaice (`Foto`) injectează putere maximă și urcă alert pentru a acoperi vârful de seară (orele 19:00–22:00).
 
-    3. **Sarcina Reziduală și Efectul «Duck Curve»:**
-       - Curba sarcinii reziduale evidențiază golul de la amiază creat de sursele solare[cite: 1]. Diferența dintre minimul de la prânz și vârful de seară dictează rampa necesară de acoperit din centralele dispecerizabile și importuri[cite: 1].
+    3. **Sarcina Reziduală**
+       - Curba sarcinii reziduale evidențiază golul de la amiază creat de sursele solare. Diferența dintre minimul de la prânz și vârful de seară dictează rampa necesară de acoperit din centralele dispecerizabile și importuri.
 
     4. **Comportamentul Soldului Transfrontalier:**
-       - Se observă cum soldul urmărește diferențialul dintre cerere și generarea locală: în perioadele de vârf de sarcină sau cădere a producției regenerabile, sistemul apelează la importuri (sold pozitiv), revenind spre export sau echilibru la golul de noapte sau în orele de supraproducție eoliană/solară[cite: 1].
+       - Se observă cum soldul urmărește diferențialul dintre cerere și generarea locală: în perioadele de vârf de sarcină sau cădere a producției regenerabile, sistemul apelează la importuri (sold pozitiv), revenind spre export sau echilibru la golul de noapte sau în orele de supraproducție eoliană/solară.
     """)
